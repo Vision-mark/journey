@@ -14,5 +14,13 @@
     "transport": "騎車",
     "ticketCost": 450,
     "transportCost": 0
+  },
+  {
+    "id": 1781853596215,
+    "date": "2026-06-24",
+    "location": "高雄澄清湖棒球場",
+    "transport": "騎車",
+    "ticketCost": 450,
+    "transportCost": 0
   }
 ]
