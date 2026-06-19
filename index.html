@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚾ 棒球看球行程紀錄</title>
+    <style>
+        :root {
+            --primary-color: #0b2240; /* 經典棒球深藍 */
+            --accent-color: #e67e22;  /* 活力橘 */
+            --save-color: #27ae60;    /* 儲存綠 */
+            --bg-color: #f4f6f9;
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+        }
+
+        header {
+            max-width: 1000px;
+            margin: 0 auto 20px auto;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 15px;
+        }
+
+        .header-title-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-add { background-color: var(--accent-color); color: white; }
+        .btn-add:hover { background-color: #d35400; }
+
+        .btn-save-all { background-color: var(--save-color); color: white; }
+        .btn-save-all:hover { background-color: #219653; }
+
+        .btn-config { background-color: #7f8c8d; color: white; }
+        .btn-config:hover { background-color: #616a6b; }
+
+        .trip-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            header h1 { font-size: 32px; }
+            .trip-container {
+                grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+                gap: 20px;
+            }
+        }
+
+        .trip-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            padding: 18px;
+            border-left: 6px solid var(--primary-color);
+            box-sizing: border-box;
+        }
+
+        .trip-header-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .trip-date { font-size: 18px; font-weight: bold; color: var(--accent-color); }
+        .btn-delete { background: none; border: none; color: #e74c3c; font-size: 14px; cursor: pointer; font-weight: bold; }
+
+        .card-field { display: flex; align-items: center; margin-bottom: 12px; }
+        .card-field label { width: 80px; font-weight: bold; font-size: 14px; color: #444; }
+        .card-field input, .card-field select {
+            flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; -webkit-appearance: none;
+        }
+        .card-field input:focus, .card-field select:focus { outline: none; border-color: var(--primary-color); background-color: #fcfdfe; }
+
+        .trip-cost { margin-top: 15px; padding-top: 12px; border-top: 1px dashed #ddd; font-weight: bold; font-size: 16px; color: #333; }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000;
+        }
+
+        .modal-content { background: white; padding: 25px; border-radius: 10px; width: 85%; max-width: 350px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h2 { margin-top: 0; color: var(--primary-color); font-size: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 14px; }
+        .form-group input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title-zone">
+            <h1>⚾ 遠征紀錄</h1>
+            <div class="action-group">
+                <button class="btn btn-config" id="openConfigBtn">⚙️ 設定雲端</button>
+                <button class="btn btn-add" id="openModalBtn">＋ 新增日期</button>
+                <button class="btn btn-save-all" onclick="saveDataToGitHub()">💾 儲存全部</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="trip-container" id="tripContainer"></main>
+
+    <div class="modal-overlay" id="dateModal">
+        <div class="modal-content">
+            <h2>選擇看球日期</h2>
+            <form id="dateForm">
+                <div class="form-group">
+                    <label for="tripDate">日期：</label>
+                    <input type="date" id="tripDate" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-config" id="closeModalBtn" style="background:#95a5a6;">取消</button>
+                    <button type="submit" class="btn btn-add">確認建立</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="configModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2>⚙️ GitHub 雲端同步設定</h2>
+            <p style="font-size: 12px; color: #7f8c8d; margin-top: -10px;">資料將安全地儲存在此裝置的瀏覽器中，不會公開上傳。</p>
+            <form id="configForm">
+                <div class="form-group">
+                    <label>GitHub 帳號名稱 (Owner)</label>
+                    <input type="text" id="cfgOwner" placeholder="例如：your-github-id" required>
+                </div>
+                <div class="form-group">
+                    <label>專案倉庫名稱 (Repository)</label>
+                    <input type="text" id="cfgRepo" placeholder="例如：baseball-data" required>
+                </div>
+                <div class="form-group">
+                    <label>個人存取金鑰 (GitHub Token)</label>
+                    <input type="password" id="cfgToken" placeholder="ghp_xxxxxxxxxxxx" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="closeConfigBtn" style="background:#95a5a6; color:white;">關閉</button>
+                    <button type="submit" class="btn btn-save-all">儲存並載入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let baseballTrips = [];
+
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const dateModal = document.getElementById('dateModal');
+        const dateForm = document.getElementById('dateForm');
+        const tripContainer = document.getElementById('tripContainer');
+
+        const openConfigBtn = document.getElementById('openConfigBtn');
+        const closeConfigBtn = document.getElementById('closeConfigBtn');
+        const configModal = document.getElementById('configModal');
+        const configForm = document.getElementById('configForm');
+
+        openModalBtn.addEventListener('click', () => { dateModal.style.display = 'flex'; });
+        closeModalBtn.addEventListener('click', () => { dateModal.style.display = 'none'; dateForm.reset(); });
+        
+        openConfigBtn.addEventListener('click', () => {
+            document.getElementById('cfgOwner').value = localStorage.getItem('bb_owner') || '';
+            document.getElementById('cfgRepo').value = localStorage.getItem('bb_repo') || '';
+            document.getElementById('cfgToken').value = localStorage.getItem('bb_token') || '';
+            configModal.style.display = 'flex';
+        });
+        closeConfigBtn.addEventListener('click', () => { configModal.style.display = 'none'; });
+
+        configForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            localStorage.setItem('bb_owner', document.getElementById('cfgOwner').value.trim());
+            localStorage.setItem('bb_repo', document.getElementById('cfgRepo').value.trim());
+            localStorage.setItem('bb_token', document.getElementById('cfgToken').value.trim());
+            configModal.style.display = 'none';
+            alert("⚙️ 設定儲存成功！正在嘗試載入雲端資料...");
+            loadDataFromGitHub();
+        });
+
+        function getGitHubUrl() {
+            const owner = localStorage.getItem('bb_owner');
+            const repo = localStorage.getItem('bb_repo');
+            return `https://api.github.com/repos/${owner}/${repo}/contents/data.json`;
+        }
+
+        function renderTrips() {
+            tripContainer.innerHTML = '';
+            baseballTrips.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            baseballTrips.forEach(trip => {
+                const totalCost = Number(trip.ticketCost || 0) + Number(trip.transportCost || 0);
+                const card = document.createElement('div');
+                card.className = 'trip-card';
+                card.id = `card-${trip.id}`;
+                card.innerHTML = `
+                    <div class="trip-header-zone">
+                        <div class="trip-date">📅 ${trip.date}</div>
+                        <button class="btn-delete" onclick="deleteTrip(${trip.id})">❌ 刪除</button>
+                    </div>
+                    
+                    <div class="card-field">
+                        <label>📍 球場：</label>
+                        <select onchange="updateField(${trip.id}, 'location', this.value)">
+                            <option value="" ${trip.location === '' ? 'selected' : ''}>-- 請選擇 --</option>
+                            <option value="臺北大巨蛋" ${trip.location === '臺北大巨蛋' ? 'selected' : ''}>臺北大巨蛋</option>
+                            <option value="新莊棒球場" ${trip.location === '新莊棒球場' ? 'selected' : ''}>新莊棒球場</option>
+                            <option value="樂天桃園棒球場" ${trip.location === '樂天桃園棒球場' ? 'selected' : ''}>樂天桃園棒球場</option>
+                            <option value="台中洲際棒球場" ${trip.location === '台中洲際棒球場' ? 'selected' : ''}>台中洲際棒球場</option>
+                            <option value="斗六棒球場" ${trip.location === '斗六棒球場' ? 'selected' : ''}>斗六棒球場</option>
+                            <option value="嘉義市立棒球場" ${trip.location === '嘉義市立棒球場' ? 'selected' : ''}>嘉義市立棒球場</option>
+                            <option value="台南市立棒球場" ${trip.location === '台南市立棒球場' ? 'selected' : ''}>台南市立棒球場</option>
+                            <option value="高雄澄清湖棒球場" ${trip.location === '高雄澄清湖棒球場' ? 'selected' : ''}>高雄澄清湖棒球場</option>
+                        </select>
+                    </div>
+
+                    <div class="card-field">
+                        <label>🚗 交通：</label>
+                        <input type="text" value="${trip.transport || ''}" placeholder="例如：捷運來回" oninput="updateField(${trip.id}, 'transport', this.value)">
+                    </div>
+
+                    <div class="card-field">
+                        <label>🎟️ 門票：</label>
+                        <input type="number" id="ticket-${trip.id}" value="${trip.ticketCost || ''}" placeholder="0" oninput="updateField(${trip.id}, 'ticketCost', this.value)">
+                    </div>
+
+                    <div class="card-field">
+                        <label>⛽ 交通費：</label>
+                        <input type="number" id="transportCost-${trip.id}" value="${trip.transportCost || ''}" placeholder="0" oninput="updateField(${trip.id}, 'transportCost', this.value)">
+                    </div>
+
+                    <div class="trip-cost">
+                        總花費: <span id="total-${trip.id}" style="color: #e74c3c; font-size: 18px; float: right;">$${totalCost}</span>
+                    </div>
+                `;
+                tripContainer.appendChild(card);
+            });
+        }
+
+        function updateField(id, field, value) {
+            const trip = baseballTrips.find(t => t.id === id);
+            if (trip) {
+                if (field === 'ticketCost' || field === 'transportCost') {
+                    trip[field] = parseInt(value) || 0;
+                } else {
+                    trip[field] = value;
+                }
+            }
+            const totalElement = document.getElementById(`total-${id}`);
+            if (totalElement) {
+                const currentTotal = Number(trip.ticketCost || 0) + Number(trip.transportCost || 0);
+                totalElement.textContent = `$${currentTotal}`;
+            }
+        }
+
+        function deleteTrip(id) {
+            if(confirm("確定要刪除這筆行程嗎？")) {
+                baseballTrips = baseballTrips.filter(t => t.id !== id);
+                renderTrips();
+            }
+        }
+
+        dateForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newTrip = {
+                id: Date.now(),
+                date: document.getElementById('tripDate').value,
+                location: "", transport: "", ticketCost: 0, transportCost: 0
+            };
+            baseballTrips.push(newTrip);
+            renderTrips();
+            dateModal.style.display = 'none';
+            dateForm.reset();
+        });
+
+        // 🎯 【本次新增：網址特異功能辨識】
+        function checkUrlParameters() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pOwner = urlParams.get('owner');
+            const pRepo = urlParams.get('repo');
+            const pToken = urlParams.get('token');
+
+            if (pOwner && pRepo && pToken) {
+                localStorage.setItem('bb_owner', pOwner.trim());
+                localStorage.setItem('bb_repo', pRepo.trim());
+                localStorage.setItem('bb_token', pToken.trim());
+                
+                // 綁定成功後，洗掉網址後面的參數，乾淨又安全，且不會重複觸發
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+                
+                alert("🎉 偵測到雲端同步設定！已為您自動綁定完成！");
+            }
+        }
+
+        // --- ☁️ GitHub API 對接核心邏輯 ---
+        async function loadDataFromGitHub() {
+            const token = localStorage.getItem('bb_token');
+            if(!token) {
+                configModal.style.display = 'flex';
+                return;
+            }
+            
+            try {
+                const response = await fetch(getGitHubUrl(), {
+                    headers: { "Authorization": `token ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const decodedContent = decodeURIComponent(atob(data.content).split('').map(function(c) {
+                        return '%' + ('0' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    baseballTrips = JSON.parse(decodedContent);
+                    renderTrips();
+                }
+            } catch (error) {
+                console.log("載入失敗或檔案尚未建立");
+            }
+        }
+
+        async function saveDataToGitHub() {
+            const token = localStorage.getItem('bb_token');
+            if(!token) {
+                alert("請先點擊右上角「⚙️ 設定雲端」填入你的 GitHub 金鑰資訊！");
+                configModal.style.display = 'flex';
+                return;
+            }
+            
+            let sha = null;
+            const targetUrl = getGitHubUrl();
+            try {
+                const res = await fetch(targetUrl, { headers: { "Authorization": `token ${token}` } });
+                if(res.ok) {
+                    const fileData = await res.json();
+                    sha = fileData.sha;
+                }
+            } catch(e) {}
+
+            const jsonString = JSON.stringify(baseballTrips, null, 2);
+            const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `token ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: "🔄 更新棒球行程紀錄",
+                        content: base64Content,
+                        sha: sha 
+                    })
+                });
+
+                if (response.ok) {
+                    alert("🎉 成功同步儲存到 GitHub 雲端！");
+                } else {
+                    alert("儲存失敗：\n請檢查「設定雲端」內填寫的帳號、倉庫名稱或金鑰權限是否正確。");
+                }
+            } catch (error) {
+                alert("網路錯誤，儲存失敗：" + error);
+            }
+        }
+
+        // 初始化載入：先檢查網址參數，再載入資料
+        checkUrlParameters();
+        loadDataFromGitHub();
+    </script>
+</body>
+</html>
