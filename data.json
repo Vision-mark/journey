@@ -22,5 +22,13 @@
     "transport": "騎車",
     "ticketCost": 450,
     "transportCost": 0
+  },
+  {
+    "id": 1781853901658,
+    "date": "2026-08-04",
+    "location": "嘉義市立棒球場",
+    "transport": "游泳",
+    "ticketCost": 300,
+    "transportCost": 0
   }
 ]
